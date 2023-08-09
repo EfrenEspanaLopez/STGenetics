@@ -1,0 +1,44 @@
+﻿@page "/"
+
+<RadzenContent Container="container" Style="height: 100vh;">
+    <div class="row justify-content-center align-items-center">
+        <div class="col-md-6">
+            <h2>Welcome to ST Genetics!</h2>
+            <p>Explore our amazing selection of livestock.</p>
+        </div>
+    </div>
+    <div class="row justify-content-center mt-4">
+        <div class="col-md-6">
+            <RadzenCard Style="width: 100%; margin-bottom: 15px;">
+                <HeaderTemplate>
+                    Featured Animal
+                </HeaderTemplate>
+                <Content>
+                    <div class="d-flex align-items-center">
+                        <img src="img/cow.jpg" alt="Animal" style="max-width: 100px; margin-right: 10px;" />
+                        <div>
+                            <h5>Cow</h5>
+                            <p style="margin-top: 5px;">A healthy cow ready for grazing.</p>
+                        </div>
+                    </div>
+                </Content>
+            </RadzenCard>
+        </div>
+        <div class="col-md-6">
+            <RadzenCard Style="width: 100%; margin-bottom: 15px;">
+                <HeaderTemplate>
+                    Special Offer
+                </HeaderTemplate>
+                <Content>
+                    <div class="d-flex align-items-center">
+                        <img src="img/Sheep.jpg" alt="Nature" style="max-width: 100px; margin-right: 10px;" />
+                        <div>
+                            <h5>Sheep</h5>
+                            <p style="margin-top: 5px;">Quality sheep for wool and meat production.</p>
+                        </div>
+                    </div>
+                </Content>
+            </RadzenCard>
+        </div>
+    </div>
+</RadzenContent>

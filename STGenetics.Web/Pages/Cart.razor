@@ -1,0 +1,126 @@
+﻿@page "/Cart"
+@inject CartService CartService
+
+<RadzenDataGrid @ref="grid" 
+    Data="CartService.CartItems" 
+    AllowColumnResize="true"
+    AllowGrouping="true"
+    Render="@OnRender">
+    <Columns>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="AnimalId" Title="#" Width="50px" />
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Name" Title="Name"  />
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Breed" Title="Breed" />
+        <RadzenDataGridColumn TItem="STGenericModel" Property="BirthDate" Title="BirthDate">
+            <Template Context="animal">
+                @animal.BirthDate.ToString("dd/MM/yyyy")
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Sex" Title="Sex"  />
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Price" Title="Price">
+            <Template Context="animal">
+                @animal.Price.ToString("#,0.00")
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel">
+            <Template Context="animal">
+                    <RadzenButton Icon="delete" Click="@(() => DeleteRow(animal))" />
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+<div class="mt-4">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Summary</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Total Purchase Amount:</td>
+                <td>@CalculateTotal().ToString("#,0.00")</td>
+            </tr>
+            <tr>
+                <td>Discount Percentage:</td>
+                <td>@CalculateDiscountPercentage().ToString("#,0.00")</td>
+            </tr>
+            <tr>
+                <td>Shipping Amount:</td>
+                <td>@CalculateShippingAmount().ToString("#,0.00")</td>
+            </tr>
+            <tr>
+                <td><strong>Total after Discount and Shipping:</strong></td>
+                <td>@CalculateTotalAfterDiscountAndShipping().ToString("#,0.00")</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+
+@code {
+    private RadzenDataGrid<STGenericModel> grid;
+    void DeleteRow(STGenericModel animal)
+    {
+        CartService.CartItems.Remove(animal);
+        grid.Reload();
+    }
+
+    void OnRender(DataGridRenderEventArgs<STGenericModel> args)
+    {
+        if (args.FirstRender)
+        {
+            args.Grid.Groups.Add(new GroupDescriptor() { Property = "Breed", SortOrder = SortOrder.Descending });
+            StateHasChanged();
+        }
+    }
+
+    double CalculateTotal()
+    {
+        double total = 0;
+        foreach (var item in CartService.CartItems)
+        {
+            total += item.Price;
+        }
+        return total;
+    }
+
+    double CalculateDiscountPercentage()
+    {
+        double discount = 0;
+        var groupedByBreed = CartService.CartItems.GroupBy(item => item.Breed)
+        .Select(group => new
+        {
+            Breed = group.Key,
+            Items = group.ToList()
+        }).ToList();
+        foreach (var group in groupedByBreed)
+        {
+            if (group.Items.Any(item => item.AnimalId > 5))
+            {
+                foreach (var item in group.Items)
+                {
+                    discount += item.Price * 0.05;
+                }
+            }
+        }
+
+        if (CartService.CartItems.Count > 10)
+            discount += CalculateTotal() * 0.03;
+
+        return discount; // Example: 10% discount
+    }
+    double CalculateShippingAmount()
+    {
+        if (CartService.CartItems.Count > 20 || CartService.CartItems.Count == 0)
+            return 0;
+        else
+            return 1000; 
+    }
+
+    double CalculateTotalAfterDiscountAndShipping()
+    {
+        return CalculateTotal() - CalculateDiscountPercentage() + CalculateShippingAmount();
+    }
+}

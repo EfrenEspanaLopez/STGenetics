@@ -1,0 +1,194 @@
+﻿@page "/Animals"
+@inject CartService CartService
+@inject NavigationManager NavigationManager
+@inject AnimalService AnimalService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="d-flex justify-content-between">
+    <RadzenButton Icon="add" Text="Add New Animal" Click="AddRow" />
+    <RadzenButton Text="ADD TO CART" Icon="add_shopping_cart" Click="@AddCart" class="float-right" ButtonStyle="ButtonStyle.Success"/>    
+</div>
+<RadzenDataGrid 
+    @ref="grid"
+                Data="@animals"
+                TItem="STGenericModel"
+                RowInsert="@OnInsert"
+                AllowAddRow="true"
+                AllowPaging="true"
+                PageSize="10"
+                    AllowColumnResize="true"
+                AllowSorting="true"
+                AllowFiltering="true">
+    <Columns>
+        <RadzenDataGridColumn TItem="STGenericModel" Width="50px">
+            <Template Context="animal">
+                <input type="checkbox" @bind="@animal.Selected" />
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="AnimalId" Title="#" Width="50px"/>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Name" Title="Name">
+            <EditTemplate Context="animal">
+                <RadzenTextBox @bind-Value="@animal.Name" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Breed" Title="Breed">
+            <EditTemplate Context="animal">
+                <RadzenTextBox @bind-Value="@animal.Breed" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="BirthDate" Title="Birth Date">
+            <Template Context="animal">
+                @animal.BirthDate.ToString("dd/MM/yyyy")
+            </Template>
+            <EditTemplate Context="animal">
+                <RadzenDatePicker @bind-Value="@animal.BirthDate" Format="dd-MM-yyyy" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Sex" Title="Sex">
+            <EditTemplate Context="animal">
+                <RadzenDropDown @bind-Value="@animal.Sex" Data="@sexOptions" />
+                </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Price" Title="Price">
+            <Template Context="animal">
+                @animal.Price.ToString("0.00")
+            </Template>
+            <EditTemplate Context="animal">
+                <RadzenNumeric @bind-Value="@animal.Price" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel" Property="Status" Title="Status">
+            <EditTemplate Context="animal">
+                <RadzenCheckBox @bind-Value="@animal.Status" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="STGenericModel">
+            <Template Context="animal">
+                @if (editRow != animal)
+                {
+                    <RadzenButton Icon="edit" Click="@(() => StartEdit(animal))" />
+                    <RadzenButton Icon="delete" Click="@(() => DeleteRow(animal))" />
+                }
+                else
+                {
+                    <RadzenButton Icon="save" Click="@(() => Save(animal))" />
+                    <RadzenButton Icon="cancel" Click="@(() => Cancel())" />
+              }
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+
+    
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);        
+    }
+    
+    string TextAlert;
+    
+    bool isAlertVisible = false;
+    void ShowAlert(string msj)
+    {
+         ShowNotification(new NotificationMessage() 
+            { 
+                Severity = NotificationSeverity.Error, 
+                Summary = "Error", 
+                Detail = msj, 
+                Duration = 4000 
+            });
+    }
+    private List<string> sexOptions = new List<string> { "Male", "Female" };
+    private List<STGenericModel> animals;
+    private void AddCart()
+    {
+        var select = animals.Where(x => x.Selected == true).ToList();
+        if (select.Count == 0)
+            ShowAlert("Please select an item.");
+        else
+        {
+            CartService.CartItems.Clear();
+            CartService.CartItems.AddRange(select);
+            NavigationManager.NavigateTo("/Cart");
+        }
+    }
+    private RadzenDataGrid<STGenericModel> grid;
+    bool allowRowSelectOnRowClick = true;
+    IList<STGenericModel> selectedEmployees;
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        foreach (var ctr in AnimalService.AnimalItems)
+        {
+            var item = CartService.CartItems.Find(x => x.AnimalId == ctr.AnimalId);
+            if (item == null)
+                ctr.Selected = false;
+        }
+        animals = AnimalService.AnimalItems;
+    }
+
+    private STGenericModel editRow;
+
+    private void StartEdit(STGenericModel animal)
+    {
+        grid.EditRow(animal);
+        editRow = animal;
+    }
+    void DeleteRow(STGenericModel animal)
+    {
+        animals.Remove(animal);
+        AnimalService.AnimalItems.Remove(animal);
+        grid.Reload();
+    }
+    private void Save(STGenericModel animal)
+    {
+        var validationContext = new ValidationContext(animal);
+        var validationResults = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(animal, validationContext, validationResults, true))
+        {
+            // Mostrar errores de validación
+            foreach (var validationResult in validationResults)
+            {
+                ShowAlert(validationResult.ErrorMessage);
+            }
+            return;
+        }
+        grid.UpdateRow(animal);
+        var updateItem = AnimalService.AnimalItems.Find(x => x.AnimalId == animal.AnimalId);
+        if (updateItem != null)
+        {
+            updateItem.Name = animal.Name;
+            updateItem.Status = animal.Status;
+            updateItem.Sex = animal.Sex;
+            updateItem.Price = animal.Price;
+            updateItem.BirthDate = animal.BirthDate;
+            updateItem.Breed = animal.Breed;
+        }
+        editRow = null;
+    }
+
+    private void Cancel()
+    {
+        grid.CancelEditRow(editRow);
+        editRow = null;
+    }
+
+    private void OnInsert(STGenericModel animal)
+    {
+        animals.Add(animal);
+        grid.Reload();
+
+    }
+    async Task AddRow()
+    {
+        var newAnimal = new STGenericModel() { AnimalId = grid.Count + 1 };
+        grid.InsertRow(newAnimal);
+        AnimalService.AnimalItems.Add(newAnimal);
+        editRow = newAnimal;
+    }
+}
+
